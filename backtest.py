@@ -13,10 +13,12 @@ class Backtest:
     def next(self):
         raise NotImplementedError
 
-    def run_positions_take_profit_and_stop_loss(self):
+    def run_positions_take_profit_and_stop_loss(self, ignore_positions=None):
         price_gone_up = self.row.Open < self.row.Close
         to_be_closed = []
         for trade in self.broker.positions:
+            if ignore_positions is not None and trade in ignore_positions:
+                continue
             if isinstance(trade, Long):
                 if price_gone_up:
                     if trade.is_take_profit(self.row.Close):
@@ -53,7 +55,9 @@ class Backtest:
         while self.index < end:
             self.row = self.df.iloc[self.index]
             self.run_positions_take_profit_and_stop_loss()
+            positions_before = self.broker.positions.copy()
             self.next()
+            self.run_positions_take_profit_and_stop_loss(positions_before)
             self.index += 1
         if self.broker.positions:
             print(f'no data left to backtest, {len(self.broker.positions)} position{"s" if len(self.broker.positions) > 1 else ""} still open, '
