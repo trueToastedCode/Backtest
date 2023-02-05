@@ -14,13 +14,13 @@ class Backtest:
         raise NotImplementedError
 
     def run_positions_take_profit_and_stop_loss(self, ignore_positions=None):
-        price_gone_up = self.row.Open < self.row.Close
+        open_is_low = self.row.Open == self.row.Low
         to_be_closed = []
         for trade in self.broker.positions:
             if ignore_positions is not None and trade in ignore_positions:
                 continue
             if isinstance(trade, Long):
-                if price_gone_up:
+                if open_is_low:
                     if trade.is_take_profit(self.row.Close):
                         to_be_closed.append((trade, trade.take_profit))
                     elif trade.is_stop_loss(self.row.Close):
@@ -31,7 +31,7 @@ class Backtest:
                     elif trade.is_take_profit(self.row.Close):
                         to_be_closed.append((trade, trade.take_profit))
             elif isinstance(trade, Short):
-                if price_gone_up:
+                if open_is_low:
                     if trade.is_stop_loss(self.row.Close):
                         to_be_closed.append((trade, trade.stop_loss))
                     elif trade.is_take_profit(self.row.Close):
