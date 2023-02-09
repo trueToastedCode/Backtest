@@ -15,7 +15,7 @@ def make_table_str(table):
 
 
 class BacktestStats:
-    def __init__(self, backtest, resample_equity_timeframe=None):
+    def __init__(self, backtest, resample_equity_timeframe='D'):
         self.resample_equity_timeframe = resample_equity_timeframe
         self.backtest = backtest
         self.period = None
@@ -88,7 +88,7 @@ class BacktestStats:
         if self.resample_equity_timeframe:
             df = self.equity_trades_profit_df.copy()
             df.set_index('Datetime', inplace=True)
-            df = df.resample(self.resample_equity_timeframe or 'D').agg({'Equity': 'last'})
+            df = df.resample(self.resample_equity_timeframe).agg({'Equity': 'last'})
             df.reset_index(inplace=True)
             return px.line(df, x='Datetime', y="Equity")
         else:

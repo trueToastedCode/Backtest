@@ -3,7 +3,7 @@ from .backtest_stats import BacktestStats
 
 
 class Backtest:
-    def __init__(self, df, broker=None, resample_equity_timeframe=None):
+    def __init__(self, df, broker=None, resample_equity_timeframe='D'):
         self.df = df
         self.broker = broker or Broker()
         self.index = -1
