@@ -3,12 +3,13 @@ from .backtest_stats import BacktestStats
 
 
 class Backtest:
-    def __init__(self, df, broker=None):
+    def __init__(self, df, broker=None, resample_equity_timeframe=None):
         self.df = df
         self.broker = broker or Broker()
         self.index = -1
         self.row = None
         self.stats = None
+        self.resample_equity_timeframe = resample_equity_timeframe
 
     def next(self):
         raise NotImplementedError
@@ -63,5 +64,5 @@ class Backtest:
             print(f'no data left to backtest, {len(self.broker.positions)} position{"s" if len(self.broker.positions) > 1 else ""} still open, '
                   f'pretend {"they" if len(self.broker.positions) > 1 else "it"} never existed')
             self.broker.undo_positions()
-        self.stats = BacktestStats(self)
+        self.stats = BacktestStats(self, self.resample_equity_timeframe)
         self.stats.do_analysis()
