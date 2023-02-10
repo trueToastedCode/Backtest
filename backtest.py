@@ -18,8 +18,8 @@ class Backtest:
     def run_positions_take_profit_and_stop_loss(self, ignore_positions=None):
         open_is_low = self.row.Open == self.row.Low
         open_is_high = self.row.Open == self.row.High
-        open_gone_down = False if self.previous_row.Close is None else self.row.Open < self.previous_row.Close
-        open_gone_up = False if self.previous_row.Close is None else self.row.Open > self.previous_row.Close
+        open_gone_down = False if self.previous_row is None else self.row.Open < self.previous_row.Close
+        open_gone_up = False if self.previous_row is None else self.row.Open > self.previous_row.Close
         to_be_closed = []
         for trade in self.broker.positions:
             if ignore_positions is not None and trade in ignore_positions:
