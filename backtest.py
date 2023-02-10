@@ -8,6 +8,7 @@ class Backtest:
         self.broker = broker or Broker()
         self.index = -1
         self.row = None
+        self.previous_row = None
         self.stats = None
         self.resample_equity_timeframe = resample_equity_timeframe
 
@@ -16,32 +17,39 @@ class Backtest:
 
     def run_positions_take_profit_and_stop_loss(self, ignore_positions=None):
         open_is_low = self.row.Open == self.row.Low
+        open_is_high = self.row.Open == self.row.High
+        open_gone_down = False if self.previous_row.Close is None else self.row.Open < self.previous_row.Close
+        open_gone_up = False if self.previous_row.Close is None else self.row.Open > self.previous_row.Close
         to_be_closed = []
         for trade in self.broker.positions:
             if ignore_positions is not None and trade in ignore_positions:
                 continue
             if isinstance(trade, Long):
-                if open_is_low:
-                    if trade.is_take_profit(self.row.Close):
+                if open_gone_down and trade.is_stop_loss(self.row.Open):
+                    to_be_closed.append((trade, trade.stop_loss))
+                elif open_is_low:
+                    if trade.is_take_profit(self.row.High):
                         to_be_closed.append((trade, trade.take_profit))
-                    elif trade.is_stop_loss(self.row.Close):
+                    elif trade.is_stop_loss(self.row.Low):
                         to_be_closed.append((trade, trade.stop_loss))
                 else:
-                    if trade.is_stop_loss(self.row.Close):
+                    if trade.is_stop_loss(self.row.Low):
                         to_be_closed.append((trade, trade.stop_loss))
-                    elif trade.is_take_profit(self.row.Close):
+                    elif trade.is_take_profit(self.row.High):
                         to_be_closed.append((trade, trade.take_profit))
             elif isinstance(trade, Short):
-                if open_is_low:
-                    if trade.is_stop_loss(self.row.Close):
-                        to_be_closed.append((trade, trade.stop_loss))
-                    elif trade.is_take_profit(self.row.Close):
+                if open_gone_up and trade.is_stop_loss(self.row.Open):
+                    to_be_closed.append((trade, trade.stop_loss))
+                elif open_is_high:
+                    if trade.is_take_profit(self.row.Low):
                         to_be_closed.append((trade, trade.take_profit))
+                    elif trade.is_stop_loss(self.row.High):
+                        to_be_closed.append((trade, trade.stop_loss))
                 else:
-                    if trade.is_take_profit(self.row.Close):
-                        to_be_closed.append((trade, trade.take_profit))
-                    elif trade.is_stop_loss(self.row.Close):
+                    if trade.is_stop_loss(self.row.High):
                         to_be_closed.append((trade, trade.stop_loss))
+                    elif trade.is_take_profit(self.row.Low):
+                        to_be_closed.append((trade, trade.take_profit))
             else:
                 raise ValueError('trade is neither long or short')
         for trade, price in to_be_closed:
@@ -60,6 +68,7 @@ class Backtest:
             self.next()
             self.run_positions_take_profit_and_stop_loss(positions_before)
             self.index += 1
+            self.previous_row = self.row
         if self.broker.positions:
             print(f'no data left to backtest, {len(self.broker.positions)} position{"s" if len(self.broker.positions) > 1 else ""} still open, '
                   f'pretend {"they" if len(self.broker.positions) > 1 else "it"} never existed')
