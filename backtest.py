@@ -3,7 +3,8 @@ from .backtest_stats import BacktestStats
 
 
 class Backtest:
-    def __init__(self, df, broker=None, resample_equity_timeframe='D', enforce_stop_loss_first=True):
+    def __init__(self, df, broker=None, resample_equity_timeframe='D', enforce_stop_loss_first=True,
+                 allow_same_row_exit=False):
         self.df = df
         self.broker = broker or Broker()
         self.index = -1
@@ -12,6 +13,7 @@ class Backtest:
         self.stats = None
         self.resample_equity_timeframe = resample_equity_timeframe
         self.enforce_stop_loss_first = enforce_stop_loss_first
+        self.allow_same_row_exit = allow_same_row_exit
 
     def next(self):
         raise NotImplementedError
@@ -77,9 +79,11 @@ class Backtest:
         while self.index < end:
             self.row = self.df.iloc[self.index]
             self.run_positions_take_profit_and_stop_loss()
-            positions_before = self.broker.positions.copy()
+            if self.allow_same_row_exit:
+                positions_before = self.broker.positions.copy()
             self.next()
-            self.run_positions_take_profit_and_stop_loss(positions_before)
+            if self.allow_same_row_exit:
+                self.run_positions_take_profit_and_stop_loss(positions_before)
             self.index += 1
             self.previous_row = self.row
         if self.broker.positions:
