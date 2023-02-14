@@ -3,7 +3,7 @@ from .backtest_stats import BacktestStats
 
 
 class Backtest:
-    def __init__(self, df, broker=None, resample_equity_timeframe='D'):
+    def __init__(self, df, broker=None, resample_equity_timeframe='D', enforce_stop_loss_first=True):
         self.df = df
         self.broker = broker or Broker()
         self.index = -1
@@ -11,6 +11,7 @@ class Backtest:
         self.previous_row = None
         self.stats = None
         self.resample_equity_timeframe = resample_equity_timeframe
+        self.enforce_stop_loss_first = enforce_stop_loss_first
 
     def next(self):
         raise NotImplementedError
@@ -25,31 +26,43 @@ class Backtest:
             if ignore_positions is not None and trade in ignore_positions:
                 continue
             if isinstance(trade, Long):
-                if open_gone_down and trade.is_stop_loss(self.row.Open):
-                    to_be_closed.append((trade, trade.stop_loss))
-                elif open_is_low:
-                    if trade.is_take_profit(self.row.High):
-                        to_be_closed.append((trade, trade.take_profit))
-                    elif trade.is_stop_loss(self.row.Low):
-                        to_be_closed.append((trade, trade.stop_loss))
-                else:
+                if self.enforce_stop_loss_first:
                     if trade.is_stop_loss(self.row.Low):
                         to_be_closed.append((trade, trade.stop_loss))
                     elif trade.is_take_profit(self.row.High):
                         to_be_closed.append((trade, trade.take_profit))
-            elif isinstance(trade, Short):
-                if open_gone_up and trade.is_stop_loss(self.row.Open):
-                    to_be_closed.append((trade, trade.stop_loss))
-                elif open_is_high:
-                    if trade.is_take_profit(self.row.Low):
-                        to_be_closed.append((trade, trade.take_profit))
-                    elif trade.is_stop_loss(self.row.High):
-                        to_be_closed.append((trade, trade.stop_loss))
                 else:
+                    if open_gone_down and trade.is_stop_loss(self.row.Open):
+                        to_be_closed.append((trade, trade.stop_loss))
+                    elif open_is_low:
+                        if trade.is_take_profit(self.row.High):
+                            to_be_closed.append((trade, trade.take_profit))
+                        elif trade.is_stop_loss(self.row.Low):
+                            to_be_closed.append((trade, trade.stop_loss))
+                    else:
+                        if trade.is_stop_loss(self.row.Low):
+                            to_be_closed.append((trade, trade.stop_loss))
+                        elif trade.is_take_profit(self.row.High):
+                            to_be_closed.append((trade, trade.take_profit))
+            elif isinstance(trade, Short):
+                if self.enforce_stop_loss_first:
                     if trade.is_stop_loss(self.row.High):
                         to_be_closed.append((trade, trade.stop_loss))
                     elif trade.is_take_profit(self.row.Low):
                         to_be_closed.append((trade, trade.take_profit))
+                else:
+                    if open_gone_up and trade.is_stop_loss(self.row.Open):
+                        to_be_closed.append((trade, trade.stop_loss))
+                    elif open_is_high:
+                        if trade.is_take_profit(self.row.Low):
+                            to_be_closed.append((trade, trade.take_profit))
+                        elif trade.is_stop_loss(self.row.High):
+                            to_be_closed.append((trade, trade.stop_loss))
+                    else:
+                        if trade.is_stop_loss(self.row.High):
+                            to_be_closed.append((trade, trade.stop_loss))
+                        elif trade.is_take_profit(self.row.Low):
+                            to_be_closed.append((trade, trade.take_profit))
             else:
                 raise ValueError('trade is neither long or short')
         for trade, price in to_be_closed:
