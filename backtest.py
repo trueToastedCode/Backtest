@@ -77,7 +77,7 @@ class Backtest:
                 raise ValueError('trade is neither long or short')
         for trade, price, close_type in to_be_closed:
             self.broker.close_trade(price, trade, self.row.name, self.broker.maker_fee)
-            if to_be_closed == 0:
+            if close_type == 0:
                 if self.on_stop_loss is not None:
                     self.on_stop_loss(trade, price)
             elif self.on_take_profit is not None:
