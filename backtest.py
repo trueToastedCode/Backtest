@@ -3,8 +3,14 @@ from .backtest_stats import BacktestStats
 
 
 class Backtest:
-    def __init__(self, df, broker=None, resample_equity_timeframe='D', enforce_stop_loss_first=True,
-                 allow_same_row_exit=False):
+    def __init__(self,
+                 df,
+                 broker=None,
+                 resample_equity_timeframe='D',
+                 enforce_stop_loss_first=True,
+                 allow_same_row_exit=False,
+                 on_stop_loss=None,
+                 on_take_profit=None):
         self.df = df
         self.broker = broker or Broker()
         self.index = -1
@@ -14,6 +20,8 @@ class Backtest:
         self.resample_equity_timeframe = resample_equity_timeframe
         self.enforce_stop_loss_first = enforce_stop_loss_first
         self.allow_same_row_exit = allow_same_row_exit
+        self.on_stop_loss = on_stop_loss
+        self.on_take_profit = on_take_profit
 
     def next(self):
         raise NotImplementedError
@@ -30,45 +38,50 @@ class Backtest:
             if isinstance(trade, Long):
                 if self.enforce_stop_loss_first:
                     if trade.is_stop_loss(self.row.Low):
-                        to_be_closed.append((trade, trade.stop_loss))
+                        to_be_closed.append((trade, trade.stop_loss, 0))
                     elif trade.is_take_profit(self.row.High):
-                        to_be_closed.append((trade, trade.take_profit))
+                        to_be_closed.append((trade, trade.take_profit, 1))
                 else:
                     if open_gone_down and trade.is_stop_loss(self.row.Open):
-                        to_be_closed.append((trade, trade.stop_loss))
+                        to_be_closed.append((trade, trade.stop_loss, 0))
                     elif open_is_low:
                         if trade.is_take_profit(self.row.High):
-                            to_be_closed.append((trade, trade.take_profit))
+                            to_be_closed.append((trade, trade.take_profit, 1))
                         elif trade.is_stop_loss(self.row.Low):
-                            to_be_closed.append((trade, trade.stop_loss))
+                            to_be_closed.append((trade, trade.stop_loss, 0))
                     else:
                         if trade.is_stop_loss(self.row.Low):
-                            to_be_closed.append((trade, trade.stop_loss))
+                            to_be_closed.append((trade, trade.stop_loss, 0))
                         elif trade.is_take_profit(self.row.High):
-                            to_be_closed.append((trade, trade.take_profit))
+                            to_be_closed.append((trade, trade.take_profit, 1))
             elif isinstance(trade, Short):
                 if self.enforce_stop_loss_first:
                     if trade.is_stop_loss(self.row.High):
-                        to_be_closed.append((trade, trade.stop_loss))
+                        to_be_closed.append((trade, trade.stop_loss, 0))
                     elif trade.is_take_profit(self.row.Low):
-                        to_be_closed.append((trade, trade.take_profit))
+                        to_be_closed.append((trade, trade.take_profit, 1))
                 else:
                     if open_gone_up and trade.is_stop_loss(self.row.Open):
-                        to_be_closed.append((trade, trade.stop_loss))
+                        to_be_closed.append((trade, trade.stop_loss, 0))
                     elif open_is_high:
                         if trade.is_take_profit(self.row.Low):
-                            to_be_closed.append((trade, trade.take_profit))
+                            to_be_closed.append((trade, trade.take_profit, 1))
                         elif trade.is_stop_loss(self.row.High):
-                            to_be_closed.append((trade, trade.stop_loss))
+                            to_be_closed.append((trade, trade.stop_loss, 0))
                     else:
                         if trade.is_stop_loss(self.row.High):
-                            to_be_closed.append((trade, trade.stop_loss))
+                            to_be_closed.append((trade, trade.stop_loss, 0))
                         elif trade.is_take_profit(self.row.Low):
-                            to_be_closed.append((trade, trade.take_profit))
+                            to_be_closed.append((trade, trade.take_profit, 1))
             else:
                 raise ValueError('trade is neither long or short')
-        for trade, price in to_be_closed:
+        for trade, price, close_type in to_be_closed:
             self.broker.close_trade(price, trade, self.row.name, self.broker.maker_fee)
+            if to_be_closed == 0:
+                if self.on_stop_loss is not None:
+                    self.on_stop_loss(trade, price)
+            elif self.on_take_profit is not None:
+                self.on_take_profit(trade, price)
 
     def run(self, start=-1, end=-1):
         self.index = 0 if start == -1 else start
