@@ -15,9 +15,11 @@ def make_table_str(table):
 
 
 class BacktestStats:
-    def __init__(self, backtest, resample_equity_timeframe='D'):
+    def __init__(self, backtest, start=-1, end=-1, resample_equity_timeframe='D'):
         self.resample_equity_timeframe = resample_equity_timeframe
         self.backtest = backtest
+        self.start = 0 if start == -1 else start
+        self.end = len(backtest.df) if end == -1 else end
         self.period = None
         self.win_rate = None
         self.equity_trades_profit_df = None
@@ -59,7 +61,7 @@ class BacktestStats:
         self.av_profit_per_trade = self.get_av_profit_per_trade()
 
     def get_period(self):
-        return self.backtest.df.index[-1] - self.backtest.df.index[0]
+        return self.backtest.df.index[self.end - 1] - self.backtest.df.index[self.start]
 
     def calc_win_rate(self):
         if not self.backtest.broker.history:
@@ -72,10 +74,10 @@ class BacktestStats:
 
     def get_equity_trades_profit_df(self):
         df = pd.DataFrame()
-        df['Datetime'] = self.backtest.df.index
+        df['Datetime'] = self.backtest.df.iloc[self.start:self.end].index
         equity = [self.backtest.broker.initial_equity]
         for trade in self.backtest.broker.history:
-            i = self.backtest.df.index.get_loc(trade.close_dt)
+            i = self.backtest.df.index.get_loc(trade.close_dt) - self.start
             if len(equity) <= i:
                 equity.extend([equity[-1]] * (i - len(equity) + 1))
             equity[i] += trade.calc_profit()

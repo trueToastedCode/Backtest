@@ -103,5 +103,5 @@ class Backtest:
             print(f'no data left to backtest, {len(self.broker.positions)} position{"s" if len(self.broker.positions) > 1 else ""} still open, '
                   f'pretend {"they" if len(self.broker.positions) > 1 else "it"} never existed')
             self.broker.undo_positions()
-        self.stats = BacktestStats(self, self.resample_equity_timeframe)
+        self.stats = BacktestStats(self, start, end, self.resample_equity_timeframe)
         self.stats.do_analysis()
